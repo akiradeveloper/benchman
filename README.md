@@ -63,6 +63,10 @@ drop(stopwatch);
 
 When the stopwatch is dropped, the measurement result is sent to the central database.
 
+## Screenshot
+
+![スクリーンショット 2021-12-16 19 51 45](https://user-images.githubusercontent.com/785824/146358377-fb466a64-61b5-450b-a6b9-7c458a796891.png)
+
 ## Author
 
 Akira Hayakawa (@akiradeveloper)
