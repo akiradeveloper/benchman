@@ -4,8 +4,11 @@ version = "0.1.0"
 authors = ["Akira Hayakawa <ruby.wktk@gmail.com>"]
 edition = "2021"
 license = "MIT"
+description = "A benchmark tool that focues on one-shot benchmark"
 repository = "https://github.com/akiradeveloper/benchman"
 readme = "README.md"
+categories = ["development tools"]
+keywords =  ["benchmark"]
 
 [dependencies]
 colored = "2"
