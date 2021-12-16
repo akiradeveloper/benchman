@@ -5,7 +5,9 @@
 - Focus on one-shot benchmark
 - RAII-style
 - Statistics (Average, Median, 95% and 99% percentile)
+- Colored output
 - Tagging
+- Nesting
 
 ## Motivation
 
@@ -39,7 +41,7 @@ That's why I started to create benchman.
 RAII is a good technique to manage resource access.
 My idea behind designing benchman is that stopwatch is like a resource
 because it is like a producer of a benchmark result that sends the result to the
-single consumer and there is a rule that stopwatch shouldn't send the result twice.
+single central consumer and there is a strict rule that stopwatch shouldn't send the result twice.
 
 With this idea, the library is designed like this.
 
