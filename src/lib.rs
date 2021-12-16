@@ -15,6 +15,9 @@ impl BenchResult {
     fn new(tag: String) -> Self {
         Self { tag, list: vec![] }
     }
+    fn n(&self) -> usize {
+        self.list.len()
+    }
     fn add_result(&mut self, du: Duration) {
         self.list.push(du);
     }
@@ -39,11 +42,9 @@ impl BenchResult {
 impl fmt::Display for BenchResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let n = self.list.len();
-        let tag = format!("[bench] {} ({} samples)", self.tag, n);
         let p50 = self.percentile(50);
         let p95 = self.percentile(95);
         let p99 = self.percentile(99);
-        writeln!(f, "{}", tag.yellow())?;
         writeln!(f, "[ave.] {:?}", self.average())?;
         writeln!(f, "{:?} (>50%), {:?} (>95%), {:?} (>99%)", p50, p95, p99)?;
         Ok(())
@@ -65,13 +66,14 @@ impl ResultSet {
     }
 }
 pub struct BenchMan {
+    tag: String,
     tx: mpsc::Sender<Msg>,
     result_set: Arc<RwLock<ResultSet>>,
 }
 struct Msg(String, Duration);
 impl BenchMan {
     /// Create a benchman.
-    pub fn new() -> Self {
+    pub fn new(tag: &str) -> Self {
         let (tx, mut rx) = mpsc::channel();
         let result_set = Arc::new(RwLock::new(ResultSet::new()));
         let result_set_cln = result_set.clone();
@@ -80,7 +82,7 @@ impl BenchMan {
                 result_set_cln.write().unwrap().add_result(tag, du);
             }
         });
-        Self { tx, result_set }
+        Self { tag: tag.to_owned(), tx, result_set }
     }
     /// Get a stopwatch from benchman.
     pub fn get_stopwatch(&self, tag: &str) -> Stopwatch {
@@ -89,9 +91,13 @@ impl BenchMan {
 }
 impl fmt::Display for BenchMan {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let bench_tag = &self.tag;
+        writeln!(f, "{}", bench_tag.blue())?;
         // This sleep is to wait for the in-flight messasges.
         std::thread::sleep(Duration::from_secs(1));
-        for (k, v) in &self.result_set.read().unwrap().h {
+        for (sw_tag, v) in &self.result_set.read().unwrap().h {
+            let tag = format!("{} ({} samples)", sw_tag, v.n());
+            writeln!(f, "{}", tag.yellow())?;
             writeln!(f, "{}", v)?;
         }
         Ok(())
@@ -124,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_benchman() {
-        let benchman = BenchMan::new();
+        let benchman = BenchMan::new("spawn");
         for _ in 0..1 {
             let stopwatch = benchman.get_stopwatch("loop1");
             std::thread::spawn(move || {
@@ -148,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_benchman_nested() {
-        let benchman = BenchMan::new();
+        let benchman = BenchMan::new("nested");
         let mut sum: u64 = 0;
         let s1 = benchman.get_stopwatch("outer");
         for i in 0..1000 {
