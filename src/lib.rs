@@ -157,6 +157,7 @@ mod tests {
                 for i in 0..1000000 {
                     sum += i;
                 }
+                drop(stopwatch);
             });
         }
         for _ in 0..100 {
@@ -166,6 +167,7 @@ mod tests {
                 for i in 0..1000000 {
                     sum += i;
                 }
+                drop(stopwatch);
             });
         }
         println!("{}", benchman);
