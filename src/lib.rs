@@ -1,3 +1,6 @@
+//! benchman is a RAII-style benchmark tool that
+//! focuses on old fashioned one-shot benchmark rather than statistical benchmark.
+
 use colored::*;
 use std::collections::HashMap;
 use std::fmt;
@@ -8,12 +11,11 @@ use std::time::{Duration, Instant};
 
 #[derive(Debug)]
 struct BenchResult {
-    tag: String,
     list: Vec<Duration>,
 }
 impl BenchResult {
-    fn new(tag: String) -> Self {
-        Self { tag, list: vec![] }
+    fn new() -> Self {
+        Self { list: vec![] }
     }
     fn n(&self) -> usize {
         self.list.len()
@@ -60,11 +62,22 @@ impl ResultSet {
     }
     fn add_result(&mut self, tag: String, du: Duration) {
         self.h
-            .entry(tag.clone())
-            .or_insert(BenchResult::new(tag))
+            .entry(tag)
+            .or_insert(BenchResult::new())
             .add_result(du);
     }
 }
+/// Benchman who collects the result from stopwatches.
+///
+/// ```rust
+/// use benchman::*;
+/// let bm = BenchMan::new("bm_tag");
+/// let sw = bm.get_stopwatch("sw_tag");
+/// let mut sum = 0;
+/// for i in 1..10 { sum += i; }
+/// drop(sw);
+/// eprintln!("{}", bm);
+/// ```
 pub struct BenchMan {
     tag: String,
     tx: mpsc::Sender<Msg>,
@@ -82,7 +95,11 @@ impl BenchMan {
                 result_set_cln.write().unwrap().add_result(tag, du);
             }
         });
-        Self { tag: tag.to_owned(), tx, result_set }
+        Self {
+            tag: tag.to_owned(),
+            tx,
+            result_set,
+        }
     }
     /// Get a stopwatch from benchman.
     pub fn get_stopwatch(&self, tag: &str) -> Stopwatch {
@@ -103,6 +120,8 @@ impl fmt::Display for BenchMan {
         Ok(())
     }
 }
+
+/// On drop, it sends a result to the benchman.
 pub struct Stopwatch {
     tag: Option<String>,
     t: Instant,
@@ -129,7 +148,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_benchman() {
+    fn test_benchman_spawn() {
         let benchman = BenchMan::new("spawn");
         for _ in 0..1 {
             let stopwatch = benchman.get_stopwatch("loop1");
