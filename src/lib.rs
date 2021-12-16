@@ -99,7 +99,7 @@ impl fmt::Display for BenchMan {
 }
 pub struct Stopwatch {
     tag: Option<String>,
-    t: Option<Instant>,
+    t: Instant,
     tx: mpsc::Sender<Msg>,
 }
 impl Stopwatch {
@@ -107,26 +107,14 @@ impl Stopwatch {
         Self {
             tag: Some(tag),
             tx,
-            t: None,
+            t: Instant::now(),
         }
-    }
-    /// Start the measurement.
-    ///
-    /// The measurement ends when stopwatch is dropped.
-    /// Stopwatch should be dropped to send the result
-    /// to prevent sending the result twice.
-    pub fn start(&mut self) {
-        self.t = Some(Instant::now())
     }
 }
 impl Drop for Stopwatch {
     fn drop(&mut self) {
-        if let Some(t) = self.t {
-            let elapsed = t.elapsed();
-            self.tx.send(Msg(self.tag.take().unwrap(), elapsed)).ok();
-        } else {
-            eprintln!("stopwatch has not started");
-        }
+        let elapsed = self.t.elapsed();
+        self.tx.send(Msg(self.tag.take().unwrap(), elapsed)).ok();
     }
 }
 
@@ -138,9 +126,8 @@ mod tests {
     fn test_benchman() {
         let benchman = BenchMan::new();
         for _ in 0..1 {
-            let mut stopwatch = benchman.get_stopwatch("loop1");
+            let stopwatch = benchman.get_stopwatch("loop1");
             std::thread::spawn(move || {
-                stopwatch.start();
                 let mut sum: u64 = 0;
                 for i in 0..1000000 {
                     sum += i;
@@ -148,9 +135,8 @@ mod tests {
             });
         }
         for _ in 0..100 {
-            let mut stopwatch = benchman.get_stopwatch("loop2");
+            let stopwatch = benchman.get_stopwatch("loop2");
             std::thread::spawn(move || {
-                stopwatch.start();
                 let mut sum: u64 = 0;
                 for i in 0..1000000 {
                     sum += i;
@@ -164,11 +150,9 @@ mod tests {
     fn test_benchman_nested() {
         let benchman = BenchMan::new();
         let mut sum: u64 = 0;
-        let mut s1 = benchman.get_stopwatch("outer");
-        s1.start();
+        let s1 = benchman.get_stopwatch("outer");
         for i in 0..1000 {
-            let mut s2 = benchman.get_stopwatch("inner");
-            s2.start();
+            let s2 = benchman.get_stopwatch("inner");
             for j in 0..100000 {
                 sum += i * j;
             }
