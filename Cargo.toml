@@ -1,0 +1,11 @@
+[package]
+name = "benchman"
+version = "0.1.0"
+authors = ["Akira Hayakawa <ruby.wktk@gmail.com>"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/akiradeveloper/benchman"
+readme = "README.md"
+
+[dependencies]
+colored = "2"
