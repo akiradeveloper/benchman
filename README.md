@@ -1,5 +1,8 @@
 # benchman
 
+[![Crates.io](https://img.shields.io/crates/v/benchman.svg)](https://crates.io/crates/benchman)
+[![documentation](https://docs.rs/benchman/badge.svg)](https://docs.rs/benchman)
+
 ## Features
 
 - Focus on one-shot benchmark
