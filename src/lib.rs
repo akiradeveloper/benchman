@@ -43,7 +43,6 @@ impl BenchResult {
 }
 impl fmt::Display for BenchResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let n = self.list.len();
         let p50 = self.percentile(50);
         let p95 = self.percentile(95);
         let p99 = self.percentile(99);
@@ -80,14 +79,14 @@ impl ResultSet {
 /// ```
 pub struct BenchMan {
     tag: String,
-    tx: mpsc::Sender<Msg>,
+    tx: mpsc::SyncSender<Msg>,
     result_set: Arc<RwLock<ResultSet>>,
 }
 struct Msg(String, Duration);
 impl BenchMan {
     /// Create a benchman.
     pub fn new(tag: &str) -> Self {
-        let (tx, mut rx) = mpsc::channel();
+        let (tx, rx) = mpsc::sync_channel(100);
         let result_set = Arc::new(RwLock::new(ResultSet::new()));
         let result_set_cln = result_set.clone();
         std::thread::spawn(move || {
@@ -125,10 +124,10 @@ impl fmt::Display for BenchMan {
 pub struct Stopwatch {
     tag: Option<String>,
     t: Instant,
-    tx: mpsc::Sender<Msg>,
+    tx: mpsc::SyncSender<Msg>,
 }
 impl Stopwatch {
-    fn new(tag: String, tx: mpsc::Sender<Msg>) -> Self {
+    fn new(tag: String, tx: mpsc::SyncSender<Msg>) -> Self {
         Self {
             tag: Some(tag),
             tx,
@@ -146,25 +145,28 @@ impl Drop for Stopwatch {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     #[test]
     fn test_benchman_spawn() {
-        let benchman = BenchMan::new("spawn");
+        let benchman = Arc::new(BenchMan::new("spawn"));
         for _ in 0..1 {
-            let stopwatch = benchman.get_stopwatch("loop1");
+            let bm = benchman.clone();
             std::thread::spawn(move || {
-                let mut sum: u64 = 0;
+                let _sw = bm.get_stopwatch("loop1");
+                let mut _sum: u64 = 0;
                 for i in 0..1000000 {
-                    sum += i;
+                    _sum += i;
                 }
             });
         }
         for _ in 0..100 {
-            let stopwatch = benchman.get_stopwatch("loop2");
+            let bm = benchman.clone();
             std::thread::spawn(move || {
-                let mut sum: u64 = 0;
+                let _sw = bm.get_stopwatch("loop2");
+                let mut _sum: u64 = 0;
                 for i in 0..1000000 {
-                    sum += i;
+                    _sum += i;
                 }
             });
         }
@@ -174,15 +176,15 @@ mod tests {
     #[test]
     fn test_benchman_nested() {
         let benchman = BenchMan::new("nested");
-        let mut sum: u64 = 0;
-        let s1 = benchman.get_stopwatch("outer");
+        let mut _sum: u64 = 0;
+        let sw1 = benchman.get_stopwatch("outer");
         for i in 0..1000 {
-            let s2 = benchman.get_stopwatch("inner");
+            let _sw2 = benchman.get_stopwatch("inner");
             for j in 0..100000 {
-                sum += i * j;
+                _sum += i * j;
             }
         }
-        drop(s1);
+        drop(sw1);
         println!("{}", benchman);
     }
 }
