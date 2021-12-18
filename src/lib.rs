@@ -2,6 +2,7 @@
 //! focuses on old fashioned one-shot benchmark rather than statistical benchmark.
 
 use colored::*;
+use indexmap::IndexSet;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::mpsc;
@@ -53,11 +54,18 @@ impl fmt::Display for BenchResult {
 }
 #[derive(Debug)]
 struct ResultSet {
-    pub h: HashMap<String, BenchResult>,
+    tag_indices: IndexSet<String>,
+    h: HashMap<String, BenchResult>,
 }
 impl ResultSet {
     fn new() -> Self {
-        Self { h: HashMap::new() }
+        Self {
+            tag_indices: IndexSet::new(),
+            h: HashMap::new(),
+        }
+    }
+    fn reserve_tag(&mut self, tag: String) {
+        self.tag_indices.insert(tag);
     }
     fn add_result(&mut self, tag: String, du: Duration) {
         self.h
@@ -102,6 +110,7 @@ impl BenchMan {
     }
     /// Get a stopwatch from benchman.
     pub fn get_stopwatch(&self, tag: &str) -> Stopwatch {
+        self.result_set.write().unwrap().reserve_tag(tag.to_owned());
         Stopwatch::new(tag.to_owned(), self.tx.clone())
     }
 }
@@ -111,10 +120,13 @@ impl fmt::Display for BenchMan {
         writeln!(f, "{}", bench_tag.blue())?;
         // This sleep is to wait for the in-flight messasges.
         std::thread::sleep(Duration::from_secs(1));
-        for (sw_tag, v) in &self.result_set.read().unwrap().h {
-            let tag = format!("{} ({} samples)", sw_tag, v.n());
-            writeln!(f, "{}", tag.yellow())?;
-            writeln!(f, "{}", v)?;
+        let result_set_reader = &self.result_set.read().unwrap();
+        for sw_tag in &result_set_reader.tag_indices {
+            if let Some(v) = result_set_reader.h.get(sw_tag) {
+                let tag = format!("{} ({} samples)", sw_tag, v.n());
+                writeln!(f, "{}", tag.yellow())?;
+                writeln!(f, "{}", v)?;
+            }
         }
         Ok(())
     }
