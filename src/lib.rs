@@ -85,8 +85,9 @@ impl ResultSet {
 /// drop(sw);
 /// eprintln!("{}", bm);
 /// ```
+#[derive(Clone)]
 pub struct BenchMan {
-    tag: String,
+    tag: Arc<String>,
     tx: mpsc::SyncSender<Msg>,
     result_set: Arc<RwLock<ResultSet>>,
 }
@@ -103,7 +104,7 @@ impl BenchMan {
             }
         });
         Self {
-            tag: tag.to_owned(),
+            tag: Arc::new(tag.to_owned()),
             tx,
             result_set,
         }
@@ -157,11 +158,10 @@ impl Drop for Stopwatch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
 
     #[test]
     fn test_benchman_spawn() {
-        let benchman = Arc::new(BenchMan::new("spawn"));
+        let benchman = BenchMan::new("spawn");
         for _ in 0..1 {
             let bm = benchman.clone();
             std::thread::spawn(move || {
