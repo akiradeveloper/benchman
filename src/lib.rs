@@ -114,6 +114,9 @@ impl BenchMan {
         self.result_set.write().unwrap().reserve_tag(tag.to_owned());
         Stopwatch::new(tag.to_owned(), self.tx.clone())
     }
+    /// Get an immutable view of the benchman.
+    ///
+    /// If a tag in the list isn't found in the current result, the tag is ignored.
     pub fn slice<'a>(&'a self, sw_tags: impl IntoIterator<Item = &'a str>) -> BenchManSlice<'a> {
         std::thread::sleep(Duration::from_millis(100));
         let result_set_reader = &self.result_set.read().unwrap();
@@ -146,6 +149,7 @@ impl fmt::Display for BenchMan {
         Ok(())
     }
 }
+/// Immutable view of the benchman.
 pub struct BenchManSlice<'a> {
     bm_tag: &'a str,
     slices: IndexMap<&'a str, BenchResult>,
