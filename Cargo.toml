@@ -12,3 +12,4 @@ keywords =  ["benchmark"]
 
 [dependencies]
 colored = "2"
+indexmap = "1.7"
