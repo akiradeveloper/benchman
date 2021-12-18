@@ -2,7 +2,7 @@
 //! focuses on old fashioned one-shot benchmark rather than statistical benchmark.
 
 use colored::*;
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::mpsc;
@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::{Duration, Instant};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct BenchResult {
     list: Vec<Duration>,
 }
@@ -114,13 +114,27 @@ impl BenchMan {
         self.result_set.write().unwrap().reserve_tag(tag.to_owned());
         Stopwatch::new(tag.to_owned(), self.tx.clone())
     }
+    pub fn slice<'a>(&'a self, sw_tags: impl IntoIterator<Item = &'a str>) -> BenchManSlice<'a> {
+        std::thread::sleep(Duration::from_millis(100));
+        let result_set_reader = &self.result_set.read().unwrap();
+        let mut m = IndexMap::new();
+        for sw_tag in sw_tags {
+            if let Some(br) = result_set_reader.h.get(sw_tag) {
+                m.insert(sw_tag, br.clone());
+            }
+        }
+        BenchManSlice {
+            bm_tag: &self.tag,
+            slices: m,
+        }
+    }
 }
 impl fmt::Display for BenchMan {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let bench_tag = &self.tag;
         writeln!(f, "{}", bench_tag.blue())?;
         // This sleep is to wait for the in-flight messasges.
-        std::thread::sleep(Duration::from_secs(1));
+        std::thread::sleep(Duration::from_millis(100));
         let result_set_reader = &self.result_set.read().unwrap();
         for sw_tag in &result_set_reader.tag_indices {
             if let Some(v) = result_set_reader.h.get(sw_tag) {
@@ -128,6 +142,22 @@ impl fmt::Display for BenchMan {
                 writeln!(f, "{}", tag.yellow())?;
                 writeln!(f, "{}", v)?;
             }
+        }
+        Ok(())
+    }
+}
+pub struct BenchManSlice<'a> {
+    bm_tag: &'a str,
+    slices: IndexMap<&'a str, BenchResult>,
+}
+impl<'a> fmt::Display for BenchManSlice<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let bench_tag = &self.bm_tag;
+        writeln!(f, "{}", bench_tag.blue())?;
+        for (sw_tag, br) in &self.slices {
+            let tag = format!("{} ({} samples)", sw_tag, br.n());
+            writeln!(f, "{}", tag.yellow())?;
+            writeln!(f, "{}", br)?;
         }
         Ok(())
     }
@@ -196,7 +226,9 @@ mod tests {
                 _sum += i * j;
             }
         }
+        println!("{}", benchman.slice(["inner", "outer"]));
         drop(sw1);
+        println!("{}", benchman.slice(["inner", "outer"]));
         println!("{}", benchman);
     }
 }
