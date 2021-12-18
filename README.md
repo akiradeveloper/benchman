@@ -65,7 +65,7 @@ When the stopwatch is dropped, the measurement result is sent to the central dat
 
 ## Screenshot
 
-![スクリーンショット 2021-12-16 19 51 45](https://user-images.githubusercontent.com/785824/146358377-fb466a64-61b5-450b-a6b9-7c458a796891.png)
+![スクリーンショット 2021-12-18 12 42 40](https://user-images.githubusercontent.com/785824/146627751-8df2ffad-872c-4421-8b75-7518d0505a4d.png)
 
 ## Author
 
