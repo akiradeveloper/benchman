@@ -5,7 +5,6 @@ use colored::*;
 use indexmap::{IndexMap, IndexSet};
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::{Duration, Instant};
@@ -88,37 +87,26 @@ impl ResultSet {
 #[derive(Clone)]
 pub struct BenchMan {
     tag: Arc<String>,
-    tx: mpsc::SyncSender<Msg>,
     result_set: Arc<RwLock<ResultSet>>,
 }
-struct Msg(String, Duration);
 impl BenchMan {
     /// Create a benchman.
     pub fn new(tag: &str) -> Self {
-        let (tx, rx) = mpsc::sync_channel(100);
         let result_set = Arc::new(RwLock::new(ResultSet::new()));
-        let result_set_cln = result_set.clone();
-        std::thread::spawn(move || {
-            while let Ok(Msg(tag, du)) = rx.recv() {
-                result_set_cln.write().unwrap().add_result(tag, du);
-            }
-        });
         Self {
             tag: Arc::new(tag.to_owned()),
-            tx,
             result_set,
         }
     }
     /// Get a stopwatch from benchman.
     pub fn get_stopwatch(&self, tag: &str) -> Stopwatch {
         self.result_set.write().unwrap().reserve_tag(tag.to_owned());
-        Stopwatch::new(tag.to_owned(), self.tx.clone())
+        Stopwatch::new(tag.to_owned(), self.result_set.clone())
     }
     /// Get an immutable view of the benchman.
     ///
     /// If a tag in the list isn't found in the current result, the tag is ignored.
     pub fn slice<'a>(&'a self, sw_tags: impl IntoIterator<Item = &'a str>) -> BenchManSlice<'a> {
-        std::thread::sleep(Duration::from_millis(100));
         let result_set_reader = &self.result_set.read().unwrap();
         let mut m = IndexMap::new();
         for sw_tag in sw_tags {
@@ -136,8 +124,6 @@ impl fmt::Display for BenchMan {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let bench_tag = &self.tag;
         writeln!(f, "{}", bench_tag.blue())?;
-        // This sleep is to wait for the in-flight messasges.
-        std::thread::sleep(Duration::from_millis(100));
         let result_set_reader = &self.result_set.read().unwrap();
         for sw_tag in &result_set_reader.tag_indices {
             if let Some(v) = result_set_reader.h.get(sw_tag) {
@@ -171,21 +157,22 @@ impl<'a> fmt::Display for BenchManSlice<'a> {
 pub struct Stopwatch {
     tag: Option<String>,
     t: Instant,
-    tx: mpsc::SyncSender<Msg>,
+    result_set: Arc<RwLock<ResultSet>>,
 }
 impl Stopwatch {
-    fn new(tag: String, tx: mpsc::SyncSender<Msg>) -> Self {
+    fn new(tag: String, result_set: Arc<RwLock<ResultSet>>) -> Self {
         Self {
             tag: Some(tag),
-            tx,
             t: Instant::now(),
+            result_set,
         }
     }
 }
 impl Drop for Stopwatch {
     fn drop(&mut self) {
         let elapsed = self.t.elapsed();
-        self.tx.send(Msg(self.tag.take().unwrap(), elapsed)).ok();
+        let sw_tag = self.tag.take().unwrap();
+        self.result_set.write().unwrap().add_result(sw_tag, elapsed);
     }
 }
 
@@ -216,6 +203,7 @@ mod tests {
                 }
             });
         }
+        std::thread::sleep(Duration::from_secs(1));
         println!("{}", benchman);
     }
 
