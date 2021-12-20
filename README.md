@@ -3,6 +3,8 @@
 [![Crates.io](https://img.shields.io/crates/v/benchman.svg)](https://crates.io/crates/benchman)
 [![documentation](https://docs.rs/benchman/badge.svg)](https://docs.rs/benchman)
 
+![2f5c999cf5f782f8d5ec224c9149aca9899849c6_l](https://user-images.githubusercontent.com/785824/146725336-11857d72-b1fe-4e39-ae3c-6c071e82f367.jpeg)
+
 ## Features
 
 - Focus on one-shot benchmark
